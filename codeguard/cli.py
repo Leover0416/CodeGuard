@@ -21,8 +21,8 @@ def _risk_color(level: str) -> str:
     }.get(level, "white")
 
 
-@app.command()
-def review(
+@app.command("review")
+def review_cmd(
     pr_url: str = typer.Argument(..., help="GitHub PR URL"),
     json_out: bool = typer.Option(False, "--json", help="输出 JSON"),
 ) -> None:
@@ -127,6 +127,18 @@ def review(
         console.print(opt)
 
     console.print(f"\n[dim]{result.confidence_note}[/dim]")
+
+
+@app.command("serve")
+def serve_cmd(
+    host: str = typer.Option("127.0.0.1", help="监听地址"),
+    port: int = typer.Option(8000, help="端口"),
+    reload: bool = typer.Option(True, help="热重载"),
+) -> None:
+    """启动 Web 风险雷达界面。"""
+    import uvicorn
+
+    uvicorn.run("codeguard.api:app", host=host, port=port, reload=reload)
 
 
 def main() -> None:
