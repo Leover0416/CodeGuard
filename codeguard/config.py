@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     max_files_in_context: int = 30
     max_patch_chars_per_file: int = 8000
     max_total_context_chars: int = 120000
+    rules_path: str = ""
 
     @property
     def has_github_token(self) -> bool:

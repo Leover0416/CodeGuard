@@ -3,57 +3,88 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CodeGuard AI — PR Review</title>
+  <title>CodeGuard — PR 风险雷达</title>
   <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
   <div class="layout">
     <header>
-      <h1>CodeGuard AI</h1>
-      <p>输入 GitHub PR 链接，自动生成变更摘要、风险识别与 Review 建议</p>
+      <h1>CodeGuard</h1>
+      <p class="tagline">PR 风险雷达 · 5 分钟找到最该看的 3 个地方</p>
     </header>
 
     <section class="card input-card">
       <label for="prUrl">GitHub PR URL</label>
       <div class="row">
-        <input
-          id="prUrl"
-          type="url"
-          placeholder="https://github.com/owner/repo/pull/123"
-          autocomplete="off"
-        />
-        <button id="submitBtn" type="button">开始 Review</button>
+        <input id="prUrl" type="url" placeholder="https://github.com/owner/repo/pull/123" autocomplete="off" />
+        <button id="submitBtn" type="button">生成雷达</button>
       </div>
-      <p id="hint" class="hint">需要服务端配置 GITHUB_TOKEN 与 OPENAI_API_KEY</p>
+      <p class="hint">需配置 GITHUB_TOKEN 与 OPENAI_API_KEY · 团队规则见 <code>rules/default.md</code></p>
     </section>
 
-    <div id="loading" class="loading hidden">正在拉取 PR 并分析，请稍候…</div>
+    <div id="loading" class="loading hidden">正在构建 Review 决策面板…</div>
     <div id="error" class="error hidden"></div>
 
     <main id="results" class="hidden">
-      <section class="card">
-        <h2 id="prTitle"></h2>
-        <div class="meta" id="prMeta"></div>
+      <section class="card dashboard">
+        <div class="dash-top">
+          <div>
+            <h2 id="prTitle"></h2>
+            <div class="meta" id="prMeta"></div>
+          </div>
+          <div class="score-ring" id="scoreRing">
+            <span class="score-num" id="riskScore">—</span>
+            <span class="score-label">风险分</span>
+          </div>
+        </div>
+        <div class="stats-row" id="statsRow"></div>
+        <p class="focus-hint" id="focusHint"></p>
         <div class="verdict" id="verdict"></div>
       </section>
 
       <section class="card">
-        <h3>变更摘要</h3>
-        <p id="summary"></p>
-        <h3>影响范围</h3>
-        <p id="impact"></p>
-        <p class="muted" id="confidence"></p>
+        <h3>Review 路线图</h3>
+        <p class="muted section-desc">按优先级建议的 Review 顺序</p>
+        <div id="reviewRoute"></div>
       </section>
 
-      <section class="card">
-        <h3>风险识别</h3>
-        <div id="risks"></div>
+      <section class="card two-col">
+        <div>
+          <h3>变更摘要</h3>
+          <p id="summary"></p>
+          <h3>影响范围</h3>
+          <p id="impact"></p>
+          <div id="modules" class="modules"></div>
+        </div>
+        <div>
+          <h3>高风险文件</h3>
+          <div id="fileRankings"></div>
+        </div>
       </section>
 
-      <section class="card">
-        <h3>Review 建议</h3>
-        <div id="suggestions"></div>
+      <section class="card collapsible open">
+        <button type="button" class="collapse-head" data-target="blockingPanel">
+          <span>阻塞合并问题</span>
+          <span class="count-badge" id="blockingBadge">0</span>
+        </button>
+        <div id="blockingPanel" class="collapse-body"></div>
       </section>
+
+      <section class="card collapsible">
+        <button type="button" class="collapse-head" data-target="findingsPanel">
+          <span>风险发现（含证据链）</span>
+        </button>
+        <div id="findingsPanel" class="collapse-body hidden-body"></div>
+      </section>
+
+      <section class="card collapsible">
+        <button type="button" class="collapse-head" data-target="optionalPanel">
+          <span>可选 Review Comment</span>
+        </button>
+        <div id="optionalPanel" class="collapse-body hidden-body"></div>
+      </section>
+
+      <p class="muted foot-note" id="confidence"></p>
     </main>
   </div>
   <script src="/static/app.js"></script>

@@ -1,55 +1,40 @@
-# CodeGuard AI 设计说明
-
-> 比赛提交要求：说明模型选型、上下文获取、后续扩展方向。
+# CodeGuard 设计说明（v0.2 风险雷达）
 
 ## 1. 模型选型
 
-| 维度 | 选择 | 理由 |
-|------|------|------|
-| 默认模型 | `gpt-4o-mini`（可配置） | 成本低、速度快，适合 diff 级审查；结构化 JSON 输出稳定 |
-| 接口协议 | OpenAI Chat Completions + `response_format: json_object` | 便于统一接入 OpenAI / DeepSeek / 通义 / 本地 vLLM 等兼容网关 |
-| Temperature | 0.2 | 降低幻觉，减少无依据的「编造风险」 |
+| 选择 | 理由 |
+|------|------|
+| 默认 `gpt-4o-mini` | 速度快、成本低，适合结构化 JSON |
+| OpenAI 兼容 API | 可切换 DeepSeek / 通义 / 本地网关 |
+| `temperature=0.2` + `json_object` | 降低幻觉，便于解析雷达 schema |
 
-**升级路径**：对大型 PR 可改为「摘要模型 + 深度模型」两阶段：先用 mini 做文件级 triage，再对高风险文件用更强模型细审。
+升级：大 PR 可对 Top3 文件二次调用更强模型细审。
 
-## 2. 上下文获取策略
+## 2. 上下文获取
 
-```
-用户 PR URL
-    → GitHub REST API（PR 元数据 + /pulls/{id}/files 带 patch）
-    → 按变更行数排序，优先保留大改动文件
-    → 单文件 patch 截断 + 总上下文字符预算
-    → 拼装为 Markdown（标题、描述、逐文件 diff）
-    → LLM System/User Prompt
-```
+1. **GitHub PR API**：元数据 + `/files` patch（主证据源）
+2. **启发式 brief**：按路径关键词（支付/库存/auth 等）与改动行数排序，辅助 LLM 排优先级（非最终结论）
+3. **团队 rules**：`rules/default.md` 注入 prompt，落地规范检查
+4. **长度预算**：文件数 / 单 patch / 总字符可配置
 
-**设计要点**：
+**证据链**：Prompt 强制 `evidence` 引用 diff；UI 单独展示证据块。
 
-- **只审 diff**：不把整仓灌进模型，控制 token 与噪声。
-- **PR 描述纳入上下文**：帮助理解意图，减少误报。
-- **预算可配置**：`MAX_FILES_IN_CONTEXT`、`MAX_PATCH_CHARS_PER_FILE`、`MAX_TOTAL_CONTEXT_CHARS` 适配不同模型窗口。
-- **GitHub Token**：匿名 60 次/小时易触限；建议配置 `GITHUB_TOKEN` 保证 demo 稳定。
+**暂未实现（扩展）**：全仓调用链、历史 PR、CI 日志 — 见 §4。
 
-**已知局限**（诚实标注，利于评委信任）：
+## 3. 误报控制
 
-- 二进制/超大文件 GitHub 不返回 patch，需人工补充。
-- 跨文件调用链、运行时行为需结合 CI/测试报告（见扩展）。
-
-## 3. 误报与漏报控制
-
-- Prompt 要求：无 diff 证据不标 high/critical；不确定则降级并标注「需人工确认」。
-- 结构化输出：`risks[]` 与 `suggestions[]` 分离，便于 UI 过滤。
-- `overall_verdict` + `confidence_note` 显式表达把握程度。
+- 先路线后细节：默认突出 Top3，阻塞与可选评论分区
+- `optional_comments` 上限 5 条
+- 无证据不标 high/critical；不确定标注「需人工确认」
+- `blocking_issues` 与 `optional_comments` 分离
 
 ## 4. 后续扩展
 
-1. **仓库上下文增强**：对改动符号做 ripgrep / LSP，拉取被调用方定义。
-2. **规则引擎预检**：Semgrep、Bandit、ESLint 结果作为 LLM 输入，降低幻觉。
-3. **GitHub App**：在 PR 上自动评论，支持 `request_changes` 与行级 suggestion。
-4. **多平台**：GitLab、Gitee API 适配同一 `Reviewer` 抽象。
-5. **反馈闭环**：用户对误报点踩，微调 prompt 或训练 ranker。
-6. **缓存**：同一 PR SHA 缓存报告，加快重复打开。
+- 符号级调用链 / LSP
+- Semgrep 等静态结果并入上下文
+- GitHub App 自动行内评论
+- 用户反馈闭环调优 prompt
 
 ## 5. 第三方依赖
 
-见根目录 `README.md`「依赖与致谢」：FastAPI、httpx、Pydantic、Typer、Rich；无复制第三方业务代码。
+FastAPI、httpx、Pydantic、Typer、Rich — 业务与 Prompt 原创。

@@ -12,7 +12,7 @@ WEB_DIR = Path(__file__).resolve().parent.parent / "web"
 app = FastAPI(
     title="CodeGuard AI",
     description="GitHub PR 智能 Code Review 助手",
-    version="0.1.0",
+    version="0.2.0",
 )
 
 

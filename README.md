@@ -1,117 +1,93 @@
-# CodeGuard AI — GitHub PR 智能 Review 助手
+# CodeGuard — PR 风险雷达 · AI Review 助手
 
-> 编程比赛题目三：输入 GitHub PR，自动产出变更摘要、风险识别与 Review 建议。
+> 编程比赛题目三：不是评论轰炸，而是帮 Reviewer **在 5 分钟内找到 PR 里最该看的 3 个地方**。
 
-## 功能
+## 产品定位
 
-- 解析 GitHub PR 链接，拉取 PR 描述与文件级 diff
-- **变更摘要**与影响范围说明
-- **风险代码识别**（安全 / Bug / 性能 / 可维护性等，带严重度）
-- **Review 建议**（可直接贴到 PR 的评论文案）
-- 总体结论：`approve` / `comment` / `request_changes`
+传统 AI Review 容易生成大量低价值评论。CodeGuard 输出 **Review 决策面板**：
 
-提供 **Web 界面**（录 demo 用）与 **CLI** 两种使用方式。
+- **PR 风险评分**（0–100）与变更规模
+- **Review 路线图** — 建议先看哪些文件、为什么
+- **高风险文件排行**
+- **阻塞合并问题**（带 diff 证据链）
+- **可选 Review Comment**（默认收起，控制噪音）
+
+## 功能一览
+
+| 能力 | 说明 |
+|------|------|
+| 变更摘要 | 2–4 句话概括 PR 目的 |
+| 风险雷达 | 评分、规模、影响模块、阻塞数量 |
+| Review 路线 | 有序 3–5 步，突出 Top 3 |
+| 证据链 | 每条风险/阻塞项引用 diff 原文 |
+| 团队规则 | `rules/default.md` 可自定义 |
 
 ## 快速开始
 
-### 1. 环境要求
-
-- Python 3.11+
-- [GitHub Personal Access Token](https://github.com/settings/tokens)（建议 `public_repo` 或 `repo`）
-- OpenAI 兼容 API Key（OpenAI / DeepSeek / 其他网关）
-
-### 2. 安装
-
 ```bash
-cd "CodeGuard Ai"
-python3 -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-pip install -e .
+cd "CodeGuard Ai"   # 或 clone: Leover0416/CodeGuard
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt && pip install -e .
 cp .env.example .env
-# 编辑 .env 填入 GITHUB_TOKEN 与 OPENAI_API_KEY
+# 填入 GITHUB_TOKEN、OPENAI_API_KEY
 ```
 
-### 3. Web 演示（推荐录视频）
+### Web 演示（录视频推荐）
 
 ```bash
-uvicorn codeguard.api:app --reload --host 0.0.0.0 --port 8000
+uvicorn codeguard.api:app --reload --port 8000
+# http://127.0.0.1:8000
 ```
 
-浏览器打开 http://127.0.0.1:8000 ，粘贴 PR 链接后点击「开始 Review」。
-
-### 4. 命令行
+### CLI
 
 ```bash
-codeguard review "https://github.com/psf/requests/pull/1"
-codeguard review "https://github.com/psf/requests/pull/1" --json
+codeguard review "https://github.com/owner/repo/pull/123"
+codeguard review "https://github.com/owner/repo/pull/123" --json
 ```
 
-## 配置说明
+## 配置
 
 | 变量 | 说明 |
 |------|------|
-| `GITHUB_TOKEN` | GitHub API 认证，避免速率限制 |
-| `OPENAI_API_KEY` | LLM API 密钥 |
-| `OPENAI_BASE_URL` | 兼容接口地址，默认 OpenAI 官方 |
-| `OPENAI_MODEL` | 模型名，默认 `gpt-4o-mini` |
-| `MAX_FILES_IN_CONTEXT` | 送入模型的最大文件数 |
-| `MAX_PATCH_CHARS_PER_FILE` | 单文件 patch 字符上限 |
-| `MAX_TOTAL_CONTEXT_CHARS` | 总上下文字符上限 |
+| `GITHUB_TOKEN` | 避免 API 限流 |
+| `OPENAI_API_KEY` | LLM 密钥 |
+| `OPENAI_BASE_URL` | 兼容 DeepSeek 等 |
+| `OPENAI_MODEL` | 默认 `gpt-4o-mini` |
+| `RULES_PATH` | 团队规则 Markdown 路径，默认识别 `rules/default.md` |
 
 ## 架构
 
 ```
-PR URL → GitHub API (metadata + files patch)
-       → Context Builder (排序 + 截断)
-       → LLM (JSON structured review)
-       → Web / CLI 展示
+PR URL → GitHub API (diff)
+      → 启发式敏感路径提示 + 团队 rules
+      → LLM 结构化 JSON（雷达 / 路线 / 证据）
+      → 后处理补全指标
+      → Web 决策面板 / CLI
 ```
 
-详细设计见 [docs/DESIGN.md](docs/DESIGN.md)（模型选型、上下文策略、扩展方向）。
+设计说明：[docs/DESIGN.md](docs/DESIGN.md)
 
-## 项目结构
+## 仓库结构
 
 ```
-codeguard/          # 核心逻辑
-  github.py         # PR 拉取
-  context.py        # 上下文拼装
-  llm.py            # LLM 调用
-  reviewer.py       # 编排
-  api.py            # FastAPI
-  cli.py            # Typer CLI
-web/                # 前端静态页
-docs/DESIGN.md      # 比赛设计说明
+codeguard/
+  heuristics.py   # 变更规模 & 敏感路径预估
+  postprocess.py  # 雷达指标补全
+  rules.py        # 团队规则加载
+rules/default.md  # 可编辑 Review 规范
+web/              # 风险雷达 UI
 ```
 
-## Demo 视频建议脚本
+## 比赛提交
 
-1. 展示 README 与 `.env` 配置（打码 Key）
-2. 启动 `uvicorn`，打开首页
-3. 粘贴一个真实开源 PR 链接（建议选改动适中、有讨论价值的）
-4. 展示摘要、风险、建议与总体结论
-5. 可选：演示 CLI `--json` 输出
+- 公开仓库：[github.com/Leover0416/CodeGuard](https://github.com/Leover0416/CodeGuard)
+- 持续 commit / PR，避免最后一天一次性上传
+- Demo 视频建议：展示雷达分 → 路线图 Top3 → 展开阻塞项与证据
 
-## 依赖与致谢
+## 依赖
 
-本项目为比赛期间原创实现，主要依赖：
-
-| 库 | 用途 | 协议 |
-|----|------|------|
-| [FastAPI](https://fastapi.tiangolo.com/) | HTTP API | MIT |
-| [httpx](https://www.python-httpx.org/) | HTTP 客户端 | BSD |
-| [Pydantic](https://docs.pydantic.dev/) | 数据校验 | MIT |
-| [Typer](https://typer.tiangolo.com/) | CLI | MIT |
-| [Rich](https://rich.readthedocs.io/) | 终端美化 | MIT |
-| [Uvicorn](https://www.uvicorn.org/) | ASGI 服务器 | BSD |
-
-业务逻辑与 Prompt 均为本项目自行编写，未拷贝第三方 Review 产品代码。
-
-## 比赛提交提醒
-
-- 请在题目放出后 **24 小时内** 将本仓库公开链接填入表单
-- 开发过程中请 **持续 commit / PR**，避免最后一天一次性上传
-- 每个 PR 请写清改动说明；若复用以往代码片段，在 PR 中注明来源
+FastAPI、httpx、Pydantic、Typer、Rich、Uvicorn — 详见 README 历史版本与 `pyproject.toml`。
 
 ## License
 

@@ -1,9 +1,11 @@
 from codeguard.config import settings
+from codeguard.heuristics import build_heuristic_brief
 from codeguard.models import PRContext
+from codeguard.rules import load_team_rules
 
 
-def build_review_context(pr: PRContext) -> str:
-    """将 PR 元数据与 diff 拼装为 LLM 可消费的上下文，并做长度预算。"""
+def build_review_context(pr: PRContext) -> tuple[str, str, str]:
+    """返回 (主上下文, 团队规则段, 启发式段) 供 prompt 拼装。"""
     lines: list[str] = [
         "# Pull Request",
         f"URL: {pr.url}",
@@ -48,7 +50,13 @@ def build_review_context(pr: PRContext) -> str:
     if len(pr.files) > len(files):
         omitted = len(pr.files) - len(files)
         lines.append(
-            f"\n> 按变更量排序后省略了 {omitted} 个较小改动的文件（可在配置中调高 MAX_FILES_IN_CONTEXT）"
+            f"\n> 按变更量排序后省略了 {omitted} 个较小改动的文件"
         )
 
-    return "\n".join(lines)
+    main_ctx = "\n".join(lines)
+    rules = load_team_rules()
+    rules_section = (
+        "## 团队 Review 规则\n" + rules if rules else "(未配置团队规则文件)"
+    )
+    heuristic_section = build_heuristic_brief(pr)
+    return main_ctx, rules_section, heuristic_section
