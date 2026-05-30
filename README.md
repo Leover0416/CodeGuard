@@ -29,7 +29,7 @@ cd "CodeGuard Ai"   # 或 clone: Leover0416/CodeGuard
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt && pip install -e .
 cp .env.example .env
-# 填入 GITHUB_TOKEN、OPENAI_API_KEY
+# 填入 GITHUB_TOKEN、OPENAI_API_KEY（支持通义千问，见 .env.example）
 ```
 
 ### Web 演示（录视频推荐）
