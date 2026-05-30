@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CodeGuard AI — PR Review</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div class="layout">
+    <header>
+      <h1>CodeGuard AI</h1>
+      <p>输入 GitHub PR 链接，自动生成变更摘要、风险识别与 Review 建议</p>
+    </header>
+
+    <section class="card input-card">
+      <label for="prUrl">GitHub PR URL</label>
+      <div class="row">
+        <input
+          id="prUrl"
+          type="url"
+          placeholder="https://github.com/owner/repo/pull/123"
+          autocomplete="off"
+        />
+        <button id="submitBtn" type="button">开始 Review</button>
+      </div>
+      <p id="hint" class="hint">需要服务端配置 GITHUB_TOKEN 与 OPENAI_API_KEY</p>
+    </section>
+
+    <div id="loading" class="loading hidden">正在拉取 PR 并分析，请稍候…</div>
+    <div id="error" class="error hidden"></div>
+
+    <main id="results" class="hidden">
+      <section class="card">
+        <h2 id="prTitle"></h2>
+        <div class="meta" id="prMeta"></div>
+        <div class="verdict" id="verdict"></div>
+      </section>
+
+      <section class="card">
+        <h3>变更摘要</h3>
+        <p id="summary"></p>
+        <h3>影响范围</h3>
+        <p id="impact"></p>
+        <p class="muted" id="confidence"></p>
+      </section>
+
+      <section class="card">
+        <h3>风险识别</h3>
+        <div id="risks"></div>
+      </section>
+
+      <section class="card">
+        <h3>Review 建议</h3>
+        <div id="suggestions"></div>
+      </section>
+    </main>
+  </div>
+  <script src="/static/app.js"></script>
+</body>
+</html>
